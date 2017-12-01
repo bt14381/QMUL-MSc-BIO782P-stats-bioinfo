@@ -1,0 +1,156 @@
+###### Analysis of marine microbial diversity ######
+
+
+##Load data and check variable type assignment:
+
+marine_data <- read.table("322_part1.txt", header=T)
+
+head(marine_data)
+str(marine_data)
+
+
+
+####Eyeball associations between microbial diversity and latitude or season
+
+
+
+par(mfrow=c(1,2))
+plot(marine_data$diversity ~ marine_data$season, xlab= "Month", ylab="Microbial Diversity", col=c("coral", "coral4"))
+plot(marine_data$diversity ~ marine_data$lattitude, xlab= "Latitude", ylab="", col=c("coral", "coral4"))
+
+hist(marine_data$diversity, breaks=5)
+
+
+
+####Conduct two-way ANOVA
+
+model1 <- lm(marine_data$diversity ~ marine_data$lattitude * marine_data$season)
+
+summary(model1)
+
+#diagnostic plots::
+plot(model1)
+
+#plots show slight deviation from normality (Q-Q)
+#Little difference in spread of fitted against residuals
+
+
+####Plot best model:
+
+par(mfrow=c(1,1)
+plot(marine_data$diversity ~ marine_data$season, xlab= "Month", ylab="Microbial Diversity", col=c("coral", "coral4"))
+
+
+
+####Analysis of putative luciferase expression and phylogeny####
+
+
+##Load data and check variable type assignment
+
+lucif_data <- read.table("322_part2.txt", header=TRUE)
+
+str(lucif_data)
+
+
+####Eyeball relationships
+
+par(mfrow=c(1,1))
+plot(lucif_data$expr_units ~ lucif_data$subst., xlab= "Distance from reference (average substitutions)", ylab= "Expression units", col="steelblue", pch=20)
+
+model2 <- lm(lucif_data$expr_units ~ lucif_data$subst.)
+
+abline(3.075, 1.681)
+
+summary(model2)
+
+##Diagnostics
+par(mfrow=c(1,4))
+plot(model2)
+
+#Assess distribution
+hist(lucif_data$expr_units)
+
+
+
+
+
+####Analysis of HIV ####
+
+
+#### Load data and check
+
+HIV_data <- read.table("322_part3.txt", header=TRUE)
+
+str(HIV_data)
+
+
+#### Eyeball data
+
+par(mfrow=c(1,4))
+plot(HIV_data$viral_load~HIV_data$CD4)
+plot(HIV_data$viral_load~HIV_data$Shannon_diversity)
+plot(HIV_data$viral_load~HIV_data$Tissue)
+plot(HIV_data$viral_load~HIV_data$Distance)
+
+
+
+
+#### Transform data ####
+
+
+
+#explore best transformation (by eye)
+
+par(mfrow=c(1,6))
+plot((HIV_data$viral_load+10)^-2 ~ HIV_data$CD4)
+plot((HIV_data$viral_load+10)^-1.5 ~ HIV_data$CD4)
+plot((HIV_data$viral_load+10)^-0.5 ~ HIV_data$CD4)
+plot((HIV_data$viral_load+10)^0.5 ~ HIV_data$CD4)
+plot((HIV_data$viral_load+10)^1.5 ~ HIV_data$CD4)
+plot((HIV_data$viral_load+10)^2 ~ HIV_data$CD4)
+
+
+plot((HIV_data$viral_load+10)^-2 ~ HIV_data$Tissue)
+plot((HIV_data$viral_load+10)^-1.5 ~ HIV_data$Tissue)
+plot((HIV_data$viral_load+10)^-0.5 ~ HIV_data$Tissue)
+plot((HIV_data$viral_load+10)^0.5 ~ HIV_data$Tissue)
+plot((HIV_data$viral_load+10)^1.5 ~ HIV_data$Tissue)
+plot((HIV_data$viral_load+10)^2 ~ HIV_data$Tissue)
+
+
+#Create object of transformed data
+
+trans_vload <- (HIV_data$viral_load+10)^0.5
+
+#Assign ranked order of measurement
+
+HIV_data$order <- seq(1, length(HIV_data$diversity))
+
+
+#### Model selection ####
+
+
+##Explaining viral load
+
+forward <- step(lm(trans_vload ~HIV_data$Distance), scope=(~HIV_data$Distance * HIV_data$order * HIV_data$Tissue * HIV_data$Shannon_diversity), direction="forward")
+summary(lm(trans_vload ~ HIV_data$Distance))
+
+forward <- step(lm(trans_vload ~HIV_data$Shannon_diversity), scope=(~HIV_data$Shannon_diversity * HIV_data$order *HIV_data$Distance* HIV_data$Tissue * HIV_data$CD4 ), direction="forward")
+summary(lm(trans_vload ~ HIV_data$Shannon_diversity + HIV_data$Distance))
+
+forward <- step(lm(trans_vload ~HIV_data$CD4), scope=(~HIV_data$CD4 * HIV_data$Shannon_diversity * HIV_data$order *HIV_data$Distance * HIV_data$Tissue), direction="forward")
+summary(lm(trans_vload ~ HIV_data$CD4 + HIV_data$Distance + HIV_data$Shannon_diversity))
+
+forward <- step(lm(trans_vload ~HIV_data$Tissue), scope=(~HIV_data$Tissue * HIV_data$order *HIV_data$Shannon_diversity * HIV_data$Distance * HIV_data$CD4), direction="forward")
+summary(lm(trans_vload ~ HIV_data$Tissue + HIV_data$Distance + HIV_data$Shannon_diversity))
+
+forward <- step(lm(trans_vload ~ HIV_data$order), scope=(~HIV_data$order * HIV_data$Tissue * HIV_data$Shannon_diversity * HIV_data$Distance * HIV_data$CD4), direction="forward")
+summary(lm(trans_vload ~ HIV_data$order + HIV_data$Distance + HIV_data$Shannon_diversity))
+
+
+
+#### Plot model which best fits data
+
+par(mfrow=c(1,1))
+plot(trans_vload~HIV_data$Distance,xlab= "Distance (average substitutions)", ylab= "Transformed viral load", col="steelblue", pch=20)
+abline(3.13659,0.13330)
